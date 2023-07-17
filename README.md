@@ -4,7 +4,7 @@ A simple openai reverse proxy server written in Rust.
 
 ## Prelude
 
-**me**:  hello, I am going to start a new open source project in the rust language and it's going to be an an openai reverse proxy with api a requests rate limiting feature. Every project needs a good name. Could you suggest a list of potential names I can choose from?
+**me**:  hello, I am going to start a new open source project in the Rust language and it's going to be an an openai reverse proxy with api requests rate limiting feature. Every project needs a good name. Could you suggest a list of potential names I can choose from?
 
 **chatgpt4**: Sure, here are a few suggestions that reflect the key features of your project: ....
 
