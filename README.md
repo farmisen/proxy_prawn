@@ -1,6 +1,7 @@
 # ProxyPrawn
-A simple openai reverse proxy server written in Rust.
+[![CI](https://github.com/farmisen/proxy_prawn/actions/workflows/ci.yml/badge.svg)](https://github.com/farmisen/proxy_prawn/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/farmisen/proxy_prawn/branch/main/graph/badge.svg?token=IVQQLX9DIC)](https://codecov.io/gh/farmisen/proxy_prawn)
 
+A simple openai reverse proxy server written in Rust.
 
 ## Prelude
 
