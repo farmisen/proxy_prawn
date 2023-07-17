@@ -1,0 +1,75 @@
+name: CI
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME_UNDERSCORE: proxy_prawn
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort
+  RUSTDOCFLAGS: -Cpanic=abort
+  OPENAI_API_KEY: 1234-abcd-4567-ef89
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job: [test, lint, check-format]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-dependencies
+        with:
+          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('Cargo.lock') }}
+      
+      - name: Install clippy
+        if: matrix.job == 'lint'
+        run: rustup component add clippy
+
+      - name: Install rustfmt
+        if: matrix.job == 'check-format'
+        run: rustup component add rustfmt
+
+      - name: Run tasks
+        run: |
+          if [ "${{ matrix.job }}" = "test" ]; then
+            cargo install cargo2junit grcov;
+            cargo test $CARGO_OPTIONS -- -Z unstable-options --format json | cargo2junit > results.xml;
+            zip -0 ccov.zip `find . \( -name "$PROJECT_NAME_UNDERSCORE*.gc*" \) -print`;
+            grcov ccov.zip -s . -t lcov --llvm --ignore-not-existing --ignore "/*" --ignore "tests/*" -o lcov.info;
+          elif [ "${{ matrix.job }}" = "lint" ]; then
+            cargo clippy
+          elif [ "${{ matrix.job }}" = "check-format" ]; then
+            cargo fmt --check
+          fi
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.job == 'test'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./lcov.info
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

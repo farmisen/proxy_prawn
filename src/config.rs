@@ -11,6 +11,9 @@ pub struct AppConfig {
 
     #[setting(default = 3000, env = "PORT")]
     pub port: usize,
+
+    #[setting(default = "https://api.openai.com/v1/")]
+    pub openai_api_base_url: String,
 }
 
 pub fn load_config() -> miette::Result<AppConfig> {
