@@ -12,10 +12,6 @@ struct ModelsResponse {
 
 pub async fn get_models(State(config): State<AppConfig>) -> Json<Vec<Model>> {
     let client = reqwest::Client::new();
-
-    println!("API Key: {}", config.openai_api_key);
-    println!("Config: {:?}", config);
-
     let response: ModelsResponse = client
         .get(format!("{}{}", config.openai_api_base_url, "/models"))
         .header("Authorization", format!("Bearer {}", config.openai_api_key))
