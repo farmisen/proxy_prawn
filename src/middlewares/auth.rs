@@ -142,34 +142,38 @@ where
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::{AUTHORIZATION, CONTENT_LENGTH};
-    use hyper::{Body, Request};
+    use futures::Future;
+    use tokio::runtime::Runtime;
     use mockall::*;
     use mockall::predicate::*;
-    use tokio::runtime::Runtime;
+    use http_body::Body as HttpBody;
+    use std::pin::Pin;
+    use axum::body::Body;
+    use futures::future::{self, Ready};
+    use http::{Request, Response};
+    use std::task::{Context, Poll};
+    use std::convert::Infallible;
+    use hyper::Body as HyperBody;
+    use tower::Service;
 
-    mock! {
-        pub Service<ReqBody, ResBody>
-        where
-            ReqBody: 'static,
-            ResBody: HttpBody<Data = Bytes> + Send + 'static,
-            ResBody::Error: Into<BoxError> + 'static,
-        {
-            fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Infallible>>;
-            fn call(&mut self, req: Request<ReqBody>) -> BoxFuture<'static, Result<Response<ResBody>, Infallible>>;
+
+    #[derive(Debug, Clone)]
+    pub struct MockService;
+
+    impl Service<Request<Body>> for MockService {
+        type Response = Response<HyperBody>;
+        type Error = Infallible;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
         }
-    }
 
-    impl<ReqBody, ResBody> Clone for MockService<ReqBody, ResBody>
-    where
-        ReqBody: 'static,
-        ResBody: HttpBody<Data = Bytes> + Send + 'static,
-        ResBody::Error: Into<BoxError> + 'static,
-    {
-        fn clone(&self) -> Self {
-            Self::default()
+        fn call(&mut self, _req: Request<Body>) -> Self::Future {
+            future::ready(Ok(Response::new(HyperBody::empty())))
         }
     }
 
@@ -191,15 +195,20 @@ mod tests {
     fn test_call_middleware() {
         let mut rt = Runtime::new().unwrap();
 
-        let mut mock_inner_service = MockServiceMock::<(), ()>::new();
+        let mut mock_inner_service = MockService{};
 
         // let mut layer = AuthLayer::new_with_state(mock_state());  // Initialize your middleware here
+        let mut middleware = AuthMiddleware {
+            inner: mock_inner_service.clone(),
+            state: mock_state(),
+        };
+
 
         // Scenario 1: Request without authorization header
         let req_no_auth = Request::builder()
             .method("GET")
             .uri("/test")
-            .body(Body::empty())
+            .body(axum::body::Body::empty())
             .unwrap();
 
         let resp_no_auth = rt.block_on(middleware.call(req_no_auth)).unwrap();
