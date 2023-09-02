@@ -1,8 +1,7 @@
-use crate::api_client::ApiClient;
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 
-use crate::schemas::Model;
+use crate::{schemas::Model, AppState};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ModelsResponse {
@@ -10,8 +9,8 @@ struct ModelsResponse {
     data: Vec<Model>,
 }
 
-pub async fn get_models(State(client): State<ApiClient>) -> Json<Vec<Model>> {
-    let response = client.get::<ModelsResponse>("/models".into()).await;
+pub async fn get_models(State(state): State<AppState>) -> Json<Vec<Model>> {
+    let response = state.client.get::<ModelsResponse>("/models".into()).await;
 
     Json(response.unwrap().data)
 }
@@ -24,19 +23,31 @@ mod tests {
     use serde_json::json;
     use tokio_test::block_on;
 
-    use crate::schemas::{Model, ModelPermission};
+    use crate::{
+        api_client::ApiClient,
+        config::AppConfig,
+        schemas::{Model, ModelPermission},
+    };
 
-    fn mock_client(mock_server: &mockito::ServerGuard) -> ApiClient {
-        ApiClient::new(
+    fn mock_state(mock_server: &mockito::ServerGuard) -> AppState {
+        let mock_client = ApiClient::new(
             format!("http://{}/v1", mock_server.host_with_port()),
             "test-api-key".into(),
-        )
+        );
+
+        AppState {
+            client: mock_client,
+            config: AppConfig {
+                openai_api_key: "xxxx".to_string(),
+                ..Default::default()
+            },
+        }
     }
 
     #[test]
     fn test_get_models() {
         let mut mock_server = mockito::Server::new();
-        let state = State(mock_client(&mock_server));
+        let state = State(mock_state(&mock_server));
 
         let response_data = vec![Model {
             id: "babbage".into(),
